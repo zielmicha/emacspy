@@ -1,0 +1,8 @@
+(add-to-list 'load-path "~/emacspy")
+(load "~/emacspy/emacspy")
+(eval-python "import emacspy")
+(eval-python "emacspy.f.message('foo')")
+;(eval-python "emacspy.v.foo = emacspy.v.nilsdfds")
+(eval-python "emacspy.v.xo")
+(eval-python "1/0")
+(print "foo")

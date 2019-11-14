@@ -1,0 +1,6 @@
+*~
+/*.so
+/emacspy.c
+/emacspy.h
+.mypy_cache
+*.pyc
