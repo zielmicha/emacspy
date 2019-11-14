@@ -146,11 +146,24 @@ cdef class EmacsValue:
         assert size > 0
         return buf[:size - 1].decode('utf8')
 
-cdef emacs_value unwrap(obj):
+    cpdef int int(self):
+        cdef emacs_env* env = get_env()
+        cdef intmax_t i = env.extract_integer(env, self.v)
+        return i
+
+    def sym_str(self):
+        return _F().symbol_name(self).str()
+
+    def __str__(self):
+        return _F().prin1_to_string(self).str()
+
+cdef emacs_value unwrap(obj) except *:
     if isinstance(obj, str):
         obj = string(obj)
+    elif isinstance(obj, int):
+        obj = make_int(obj)
     elif obj is None:
-        obj = string('none')
+        obj = nil
 
     if isinstance(obj, EmacsValue):
         return (<EmacsValue>obj).v
@@ -170,13 +183,22 @@ cpdef string(str s):
     s_utf8 = s.encode('utf8')
     return EmacsValue.wrap(env.make_string(env, s_utf8, len(s_utf8)))
 
+cpdef make_int(int i):
+    cdef emacs_env* env = get_env()
+    return EmacsValue.wrap(env.make_integer(env, i))
+
 cdef emacs_value string_ptr(str s):
     cdef emacs_env* env = get_env()
     s_utf8 = s.encode('utf8')
     return env.make_string(env, s_utf8, len(s_utf8))
 
 class EmacsError(Exception):
-    pass
+    def __init__(self, symbol, data):
+        self.symbol = symbol
+        self.data = data
+
+    def __str__(self):
+        return '%s: %s' % (self.symbol, self.data)
 
 cpdef EmacsValue funcall(f, args):
     args = list(args)
@@ -200,7 +222,7 @@ cpdef EmacsValue funcall(f, args):
     cdef int has_err = env.non_local_exit_get(env, &exit_symbol, &exit_data)
     if has_err != 0:
         env.non_local_exit_clear(env)
-        raise EmacsError()
+        raise EmacsError(EmacsValue.wrap(exit_symbol).sym_str(), EmacsValue.wrap(exit_data))
 
     return EmacsValue.wrap(result)
 
@@ -243,18 +265,25 @@ cdef public int plugin_is_GPL_compatible = 0
 eval_python_dict = {}
 
 def init():
+    @defun('exec-python')
+    def exec_python(s):
+        s = s.str()
+        exec(s, eval_python_dict)
+
     @defun('eval-python')
     def eval_python(s):
         s = s.str()
-        print('eval: %r' % s)
-        exec(s, eval_python_dict)
+        return eval(s, eval_python_dict)
+
+    _F().define_error(sym('python-exception'), "Python error")
 
 cdef public int emacs_module_init_py(emacs_runtime* runtime):
-    global current_env
+    global current_env, nil
     print('hello')
     cdef emacs_env* prev_env = current_env
 
     current_env = runtime.get_environment(runtime)
+    nil = _V().nil
     init()
     current_env = prev_env
     return 0
@@ -267,6 +296,9 @@ class _F:
             return funcall(sym(name), args)
 
         return f
+
+    def __getitem__(self, name):
+        return getattr(self, name)
 
 # for calling Emacs functions
 f = _F()
@@ -286,6 +318,12 @@ class _V:
     def __setattr__(self, name, value):
         name = name.replace('_', '-')
         f.set(sym(name), value)
+
+    def __getitem__(self, name):
+        return getattr(self, name)
+
+    def __setitem__(self, name, value):
+        setattr(self, name, value)
 
 # for accessing Emacs variables
 v = _V()
