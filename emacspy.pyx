@@ -279,7 +279,6 @@ def init():
 
 cdef public int emacs_module_init_py(emacs_runtime* runtime):
     global current_env, nil
-    print('hello')
     cdef emacs_env* prev_env = current_env
 
     current_env = runtime.get_environment(runtime)

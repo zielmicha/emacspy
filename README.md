@@ -4,7 +4,7 @@ emacspy enables you to program Emacs in Python instead of ELisp. It works by usi
 
 ## Building and loading
 
-Install Cython (`pip install cython`) and run `make`. `emacspy.so` will appear in the current directory. Make sure you Emacs build has loadable modules support enabled (default Ubuntu build doesn't have!):
+Install Cython (`pip install cython`) and run `make`. `emacspy.so` will appear in the current directory. Make sure your Emacs build has loadable modules support enabled (default Ubuntu build doesn't have!):
 
 ```
 emacs --help | grep -q module-assertions && echo OK || echo "No loadable modules support"
@@ -26,7 +26,7 @@ The module will expose two ELisp functions `eval-python` and `exec-python`.
 You can use `exec-python` to load you Python files:
 
 ```
-(exec-python "sys.path.append('/home/user/my-files')")
+(exec-python "import sys; sys.path.append('/home/user/my-files')")
 (exec-python "import mymodule")
 ```
 
