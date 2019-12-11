@@ -1,6 +1,7 @@
 import emacspy, socket, tempfile, queue, threading
 from emacspy import sym
 from typing import Optional
+import concurrent.futures, traceback
 
 _call_soon_queue: queue.Queue = queue.Queue(0)
 _wakeup_conn: Optional[socket.socket] = None
@@ -10,15 +11,21 @@ def call_soon_in_main_thread(f):
     if _wakeup_conn:
         _wakeup_conn.send(b'x')
 
-def run_in_main_thread(f):
-    ev = threading.Event()
+def run_in_main_thread_future(f):
+    fut: concurrent.futures.Future = concurrent.futures.Future()
 
     def wrapper():
-        f()
-        ev.set()
+        try:
+            fut.set_result(f())
+        except Exception as exc:
+            traceback.print_exc()
+            fut.set_exception(exc)
 
     call_soon_in_main_thread(wrapper)
-    ev.wait()
+    return fut
+
+def run_in_main_thread(f):
+    return run_in_main_thread_future(f).result()
 
 @emacspy.defun('emacspy-threads/wakeup')
 def wakeup(p, data):

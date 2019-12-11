@@ -100,6 +100,8 @@ cdef extern from "emacs-module.h":
 from cython.view cimport array as cvarray
 import traceback
 
+#cdef extern from "thread_local.c":
+#    emacs_env* current_env
 cdef emacs_env* current_env = NULL
 
 _defined_functions = []
@@ -109,10 +111,9 @@ cdef extern from "stdlib.h":
     void abort()
     void* malloc(size_t s)
 
-cdef emacs_env* get_env():
+cdef emacs_env* get_env() except *:
     if current_env == NULL:
-        #raise Exception('not running in Emacs context')
-        abort()
+        raise Exception('not running in Emacs context, use emacspy_threads.run_in_main_thread')
     return current_env
 
 cdef class _ForDealloc:
@@ -139,14 +140,15 @@ cdef class EmacsValue:
 
     cpdef str(self):
         cdef emacs_env* env = get_env()
-        cdef ptrdiff_t size
+        cdef ptrdiff_t size = -1
         env.copy_string_contents(env, self.v, NULL, &size)
         cdef char* buf = <char*>malloc(size)
-        env.copy_string_contents(env, self.v, buf, &size)
+        if not env.copy_string_contents(env, self.v, buf, &size):
+            raise TypeError('value is not a string')
         assert size > 0
         return buf[:size - 1].decode('utf8')
 
-    cpdef int int(self):
+    cpdef int int(self) except *:
         cdef emacs_env* env = get_env()
         cdef intmax_t i = env.extract_integer(env, self.v)
         return i
@@ -203,7 +205,7 @@ class EmacsError(Exception):
 cpdef EmacsValue funcall(f, args):
     args = list(args)
     cdef emacs_env* env = get_env()
-    cdef cvarray arg_array = cvarray(shape=(len(args), ), itemsize=sizeof(emacs_value), format="i")
+    cdef cvarray arg_array = cvarray(shape=(max(1, len(args)), ), itemsize=sizeof(emacs_value), format="i")
     cdef emacs_value* arg_ptr = <emacs_value*>arg_array.data
 
     for i in range(len(args)):
