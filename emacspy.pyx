@@ -100,9 +100,9 @@ cdef extern from "emacs-module.h":
 from cython.view cimport array as cvarray
 import traceback
 
-#cdef extern from "thread_local.c":
-#    emacs_env* current_env
-cdef emacs_env* current_env = NULL
+cdef extern from "thread_local.c":
+    emacs_env* current_env
+#cdef emacs_env* current_env = NULL
 
 _defined_functions = []
 _dealloc_queue = []
@@ -224,7 +224,7 @@ cpdef EmacsValue funcall(f, args):
     cdef int has_err = env.non_local_exit_get(env, &exit_symbol, &exit_data)
     if has_err != 0:
         env.non_local_exit_clear(env)
-        raise EmacsError(EmacsValue.wrap(exit_symbol).sym_str(), EmacsValue.wrap(exit_data))
+        raise EmacsError(EmacsValue.wrap(exit_symbol).sym_str(), str(EmacsValue.wrap(exit_data)))
 
     return EmacsValue.wrap(result)
 
