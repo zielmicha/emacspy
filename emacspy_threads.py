@@ -6,6 +6,8 @@ import concurrent.futures, traceback
 _call_soon_queue: queue.Queue = queue.Queue(0)
 _wakeup_conn: Optional[socket.socket] = None
 
+_emacs_thread = threading.current_thread()
+
 def call_soon_in_main_thread(f):
     _call_soon_queue.put(f)
     if _wakeup_conn:
@@ -25,6 +27,8 @@ def run_in_main_thread_future(f):
     return fut
 
 def run_in_main_thread(f):
+    if _emacs_thread == threading.current_thread():
+        raise Exception('already on emacs main thread')
     return run_in_main_thread_future(f).result()
 
 @emacspy.defun('emacspy-threads/wakeup')
