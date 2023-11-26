@@ -228,7 +228,7 @@ cpdef EmacsValue funcall(f, args):
 
     return EmacsValue.wrap(result)
 
-cdef emacs_value call_python_object(emacs_env *env, ptrdiff_t nargs, emacs_value* args, void * data) with gil:
+cdef emacs_value call_python_object(emacs_env *env, ptrdiff_t nargs, emacs_value* args, void * data) noexcept with gil:
     global current_env
     cdef emacs_env* prev_env = current_env
     current_env = env
@@ -262,7 +262,8 @@ cpdef make_function(obj, str docstring=""):
     _defined_functions.append(obj)
     return EmacsValue.wrap(env.make_function(env, 0, 99, call_python_object, docstring.encode('utf8'), <void*>obj))
 
-cdef public int plugin_is_GPL_compatible = 0
+# CHW: Moved this to thread_local.c, was causing SEGV when declared here.
+#cdef public int plugin_is_GPL_compatible = 0
 
 eval_python_dict = {}
 
@@ -282,7 +283,6 @@ def init():
 cdef public int emacs_module_init_py(emacs_runtime* runtime):
     global current_env, nil
     cdef emacs_env* prev_env = current_env
-
     current_env = runtime.get_environment(runtime)
     nil = _V().nil
     init()
