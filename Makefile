@@ -24,5 +24,7 @@ else
 endif
 endif
 
+test:
+	emacs --script basic-test.el
 clean:
 	rm -rf emacspy.so emacspy.dylib emacspy.dylib.dSYM
